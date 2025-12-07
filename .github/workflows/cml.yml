@@ -75,7 +75,7 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           
           # Committer les fichiers .dvc mis à jour
-          git add data.dvc models.dvc metrics.txt conf_matrix.png .gitignore
+          git add data.dvc models.dvc  .gitignore
           git diff --staged --quiet || git commit -m "Update DVC artifacts [skip ci]"
 
       - name: Push data & models to DVC remote (Drive)
