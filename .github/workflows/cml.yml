@@ -62,7 +62,11 @@ jobs:
           echo "Training model..."
           python src/script.py
           # Vérifier que les fichiers ont été générés
+          
           ls -la metrics.txt conf_matrix.png
+      - name: Check models folder
+        run: |
+          ls -la models/
 
       - name: Track new artifacts with DVC
         run: |
