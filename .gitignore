@@ -21,3 +21,5 @@ __pycache__/
 .dvc/gdrive-creds.json
 gdrive_user_credentials.json
 
+/data
+/models
