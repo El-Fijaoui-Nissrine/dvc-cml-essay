@@ -1,0 +1,23 @@
+venv/
+__pycache__/
+*.pyc
+metrics.txt
+conf_matrix.png
+venv/
+
+# DVC cache
+/.dvc/cache/
+
+# Données
+data/
+models/
+plots/
+metrics/
+
+# Python
+__pycache__/
+*.pyc
+.dvc/config.local
+gdrive_user_credentials.json 
+.dvc/gdrive-creds.json
+
