@@ -18,6 +18,6 @@ metrics/
 __pycache__/
 *.pyc
 .dvc/config.local
-gdrive_user_credentials.json 
 .dvc/gdrive-creds.json
+gdrive_user_credentials.json
 
