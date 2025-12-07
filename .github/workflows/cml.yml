@@ -14,7 +14,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
+        with:
+          fetch-depth: 0
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -33,7 +34,7 @@ jobs:
       - name: Configure DVC remote for Google Drive (OAuth user creds)
         run: |
           # 0. Assurer que le remote existe
-          dvc remote add -d new_gdrive gdrive://19poLZvi8bpvIjweAT-FRk2wmz5bOigFC || echo "Remote exists"
+          dvc remote list
           # 1. Recréer les identifiants OAuth utilisateur depuis le secret
           echo '${{ secrets.GDRIVE_CREDENTIALS_JSON }}' > gdrive_user_credentials.json
           
