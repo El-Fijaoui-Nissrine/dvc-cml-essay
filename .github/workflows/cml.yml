@@ -31,50 +31,91 @@ jobs:
           pip install "dvc[gdrive]==3.63.0"
           # pip install cml # si pas dans requirements.txt
 
-      - name: Configure DVC remote for Google Drive (OAuth user creds)
+      - name: Configure DVC remote for Google Drive (OAuth)
         run: |
-          # 0. Assurer que le remote existe
+          # Le remote existe déjà dans .dvc/config (committé dans Git)
+          # On vérifie juste qu'il est bien là
           dvc remote list
-          # 1. Recréer les identifiants OAuth utilisateur depuis le secret
-          echo '${{ secrets.GDRIVE_CREDENTIALS_JSON }}' > gdrive_user_credentials.json
           
-          # 2. Injecter ces identifiants dans la config DVC locale du runner
-          dvc remote modify --local new_gdrive gdrive_user_credentials_file gdrive_user_credentials.json
+          # Créer le fichier de credentials OAuth à partir des secrets GitHub
+          cat > .dvc/gdrive-creds.json <<EOF
+          {
+            "client_id": "${{ secrets.GDRIVE_CLIENT_ID }}",
+            "client_secret": "${{ secrets.GDRIVE_CLIENT_SECRET }}",
+            "refresh_token": "${{ secrets.GDRIVE_REFRESH_TOKEN }}",
+            "token_uri": "https://oauth2.googleapis.com/token"
+          }
+          EOF
+          
+          # Configurer DVC pour utiliser ce fichier (config locale uniquement)
+          dvc remote modify --local new_gdrive gdrive_user_credentials_file .dvc/gdrive-creds.json
           dvc remote modify --local new_gdrive gdrive_client_id "${{ secrets.GDRIVE_CLIENT_ID }}"
           dvc remote modify --local new_gdrive gdrive_client_secret "${{ secrets.GDRIVE_CLIENT_SECRET }}"
           
-          # Diagnostic utile
+          # Diagnostic
+          echo "=== DVC Remote Configuration ==="
           dvc remote list
-          dvc config --local
+          echo "=== DVC Local Config ==="
+          dvc config --local --list
 
       - name: Pull data & models from DVC remote (Drive)
         run: |
+          echo "Pulling data and models from Google Drive..."
           dvc pull -v
 
       - name: Train / Evaluate model(s)
         run: |
+          echo "Training model..."
           python src/script.py
-          # script.py doit produire :
-          # - metrics.txt
-          # - conf_matrix.png
-          # - éventuellement mettre à jour models/
+          # Vérifier que les fichiers ont été générés
+          ls -la metrics.txt conf_matrix.png
 
       - name: Track new artifacts with DVC
         run: |
-          dvc add data/ models/
+          echo "Adding changes to DVC..."
+          dvc add data/
+          dvc add models/
+          
+          # Configurer Git
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add data.dvc models.dvc
-          git commit -m "Update DVC artifacts [skip ci]" || echo "Nothing to commit"
+          
+          # Committer les fichiers .dvc mis à jour
+          git add data.dvc models.dvc metrics.txt conf_matrix.png .gitignore
+          git diff --staged --quiet || git commit -m "Update DVC artifacts [skip ci]"
 
       - name: Push data & models to DVC remote (Drive)
         run: |
+          echo "Pushing artifacts to Google Drive..."
           dvc push -v
 
-      - name: Generate and publish CML report
+      - name: Push changes to GitHub
         run: |
-          echo "## Metrics" > report.md
-          cat metrics.txt  >> report.md
-          echo "## Confusion Matrix" >> report.md
-          cml publish conf_matrix.png --md >> report.md
+          git push origin main
+
+      - name: Generate and publish CML report
+        if: always()
+        run: |
+          echo "## 📊 Training Metrics" > report.md
+          echo "" >> report.md
+          
+          if [ -f metrics.txt ]; then
+            echo "\`\`\`" >> report.md
+            cat metrics.txt >> report.md
+            echo "\`\`\`" >> report.md
+          else
+            echo "❌ metrics.txt not found" >> report.md
+          fi
+          
+          echo "" >> report.md
+          echo "## 🎯 Confusion Matrix" >> report.md
+          echo "" >> report.md
+          
+          if [ -f conf_matrix.png ]; then
+            cml publish conf_matrix.png --md >> report.md
+          else
+            echo "❌ conf_matrix.png not found" >> report.md
+          fi
+          
+          # Publier le rapport
           cml comment create report.md
